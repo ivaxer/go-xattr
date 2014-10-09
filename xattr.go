@@ -61,6 +61,20 @@ func Get(path, attr string) ([]byte, error) {
 	return buf[:size], nil
 }
 
+// GetTo retrivies extended attribute data associated with path into dest. It
+// returns number of bytes retrived or non nil error.
+//
+// If attribute size is unknown caller should call GetTo with empty buffer or
+// guess it. If buffer is too short for value, GetTo returns error.
+//
+// GetTo is similar to Get but more efficient, because it issues one
+// getxattr(2) syscall per call, doesn't allocate memory for attribute data and
+// allows reuse buffer.
+func GetTo(path, attr string, dest []byte) (n int, err error) {
+	attr = prefix + attr
+	return get(path, attr, dest)
+}
+
 // Retrieves a list of names of extended attributes associated with path.
 func List(path string) ([]string, error) {
 	// find size
