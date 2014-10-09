@@ -5,56 +5,133 @@ import (
 	"unsafe"
 )
 
-var noError = syscall.Errno(0)
+func get(path, attr string, buf []byte) (rs int, err error) {
+	return getxattr(path, attr, buf, 0, 0)
+}
 
 // ssize_t getxattr(const char *path, const char *name, void *value, size_t size, u_int32_t position, int options);
-func getxattr(path string, name string, value *byte, size int) (resSize int, e error) {
-	r0, _, e1 := syscall.Syscall6(syscall.SYS_GETXATTR,
-		uintptr(unsafe.Pointer(syscall.StringBytePtr(path))),
-		uintptr(unsafe.Pointer(syscall.StringBytePtr(name))),
-		uintptr(unsafe.Pointer(value)),
-		uintptr(size), 0, 0)
-	resSize = int(r0)
-	if e1 != noError {
-		e = e1
+func getxattr(path, name string, buf []byte, position, options int) (sz int, err error) {
+	p, err := syscall.BytePtrFromString(path)
+	if err != nil {
+		return
 	}
+
+	n, err := syscall.BytePtrFromString(name)
+	if err != nil {
+		return
+	}
+
+	var b *byte
+	if len(buf) > 0 {
+		b = &buf[0]
+	}
+
+	r0, _, e1 := syscall.Syscall6(syscall.SYS_GETXATTR,
+		uintptr(unsafe.Pointer(p)),
+		uintptr(unsafe.Pointer(n)),
+		uintptr(unsafe.Pointer(b)),
+		uintptr(len(buf)),
+		uintptr(position),
+		uintptr(options))
+
+	sz = int(r0)
+	if e1 != 0 {
+		err = e1
+	}
+
 	return
+}
+
+func list(path string, dest []byte) (sz int, err error) {
+	return listxattr(path, dest, 0)
 }
 
 // ssize_t listxattr(const char *path, char *namebuf, size_t size, int options);
-func listxattr(path string, namebuf *byte, size int) (resSize int, e error) {
-	r0, _, e1 := syscall.Syscall(syscall.SYS_LISTXATTR,
-		uintptr(unsafe.Pointer(syscall.StringBytePtr(path))),
-		uintptr(unsafe.Pointer(namebuf)),
-		uintptr(size))
-	resSize = int(r0)
-	if e1 != noError {
-		e = e1
+func listxattr(path string, buf []byte, options int) (sz int, err error) {
+	p, err := syscall.BytePtrFromString(path)
+	if err != nil {
+		return
 	}
+
+	var b *byte
+	if len(buf) > 0 {
+		b = &buf[0]
+	}
+
+	r0, _, e1 := syscall.Syscall6(syscall.SYS_LISTXATTR,
+		uintptr(unsafe.Pointer(p)),
+		uintptr(unsafe.Pointer(b)),
+		uintptr(len(buf)),
+		uintptr(options), 0, 0)
+
+	sz = int(r0)
+	if e1 != 0 {
+		err = e1
+	}
+
 	return
+}
+
+func set(path, attr string, data []byte, flags int) error {
+	return setxattr(path, attr, data, 0, flags)
 }
 
 // int setxattr(const char *path, const char *name, void *value, size_t size, u_int32_t position, int options);
-func setxattr(path string, name string, value *byte, size int) (e error) {
-	_, _, e1 := syscall.Syscall6(syscall.SYS_SETXATTR,
-		uintptr(unsafe.Pointer(syscall.StringBytePtr(path))),
-		uintptr(unsafe.Pointer(syscall.StringBytePtr(name))),
-		uintptr(unsafe.Pointer(value)),
-		uintptr(size), 0, 0)
-	if e1 != noError {
-		e = e1
+func setxattr(path string, name string, data []byte, position, options int) (err error) {
+	p, err := syscall.BytePtrFromString(path)
+	if err != nil {
+		return
 	}
+
+	n, err := syscall.BytePtrFromString(name)
+	if err != nil {
+		return
+	}
+
+	var b *byte
+	if len(data) > 0 {
+		b = &data[0]
+	}
+
+	_, _, e1 := syscall.Syscall6(syscall.SYS_SETXATTR,
+		uintptr(unsafe.Pointer(p)),
+		uintptr(unsafe.Pointer(n)),
+		uintptr(unsafe.Pointer(b)),
+		uintptr(len(data)),
+		uintptr(position),
+		uintptr(options))
+
+	if e1 != 0 {
+		err = e1
+	}
+
 	return
 }
 
+func remove(path, attr string) error {
+	return removexattr(path, attr, 0)
+}
+
 // int removexattr(const char *path, const char *name, int options);
-func removexattr(path string, name string) (e error) {
-	_, _, e1 := syscall.Syscall(syscall.SYS_REMOVEXATTR,
-		uintptr(unsafe.Pointer(syscall.StringBytePtr(path))),
-		uintptr(unsafe.Pointer(syscall.StringBytePtr(name))),
-		0)
-	if e1 != noError {
-		e = e1
+func removexattr(path string, name string, options int) (err error) {
+	p, err := syscall.BytePtrFromString(path)
+	if err != nil {
+		return
 	}
+
+	n, err := syscall.BytePtrFromString(name)
+	if err != nil {
+		return
+	}
+
+	_, _, e1 := syscall.Syscall(syscall.SYS_REMOVEXATTR,
+		uintptr(unsafe.Pointer(p)),
+		uintptr(unsafe.Pointer(n)),
+		uintptr(options))
+
+	if e1 != 0 {
+		err = e1
+	}
+
 	return
 }

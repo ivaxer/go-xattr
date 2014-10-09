@@ -44,7 +44,7 @@ func Get(path, attr string) ([]byte, error) {
 	attr = prefix + attr
 
 	// find size
-	size, err := getxattr(path, attr, nil, 0)
+	size, err := get(path, attr, nil)
 	if err != nil {
 		return nil, &XAttrError{"getxattr", path, attr, err}
 	}
@@ -54,7 +54,7 @@ func Get(path, attr string) ([]byte, error) {
 
 	// read into buffer of that size
 	buf := make([]byte, size)
-	size, err = getxattr(path, attr, &buf[0], size)
+	size, err = get(path, attr, buf)
 	if err != nil {
 		return nil, &XAttrError{"getxattr", path, attr, err}
 	}
@@ -64,7 +64,7 @@ func Get(path, attr string) ([]byte, error) {
 // Retrieves a list of names of extended attributes associated with path.
 func List(path string) ([]string, error) {
 	// find size
-	size, err := listxattr(path, nil, 0)
+	size, err := list(path, nil)
 	if err != nil {
 		return nil, &XAttrError{"listxattr", path, "", err}
 	}
@@ -74,7 +74,7 @@ func List(path string) ([]string, error) {
 
 	// read into buffer of that size
 	buf := make([]byte, size)
-	size, err = listxattr(path, &buf[0], size)
+	size, err = list(path, buf)
 	if err != nil {
 		return nil, &XAttrError{"listxattr", path, "", err}
 	}
@@ -84,12 +84,8 @@ func List(path string) ([]string, error) {
 // Associates data as an extended attribute of path.
 func Set(path, attr string, data []byte) error {
 	attr = prefix + attr
-	l := len(data)
-	var p *byte
-	if l != 0 {
-		p = &data[0]
-	}
-	if err := setxattr(path, attr, p, l); err != nil {
+
+	if err := set(path, attr, data, 0); err != nil {
 		return &XAttrError{"setxattr", path, attr, err}
 	}
 	return nil
@@ -98,7 +94,7 @@ func Set(path, attr string, data []byte) error {
 // Removes the extended attribute.
 func Remove(path, attr string) error {
 	attr = prefix + attr
-	if err := removexattr(path, attr); err != nil {
+	if err := remove(path, attr); err != nil {
 		return &XAttrError{"removexattr", path, attr, err}
 	}
 	return nil
