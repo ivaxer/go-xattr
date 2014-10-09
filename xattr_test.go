@@ -1,142 +1,156 @@
-package xattr_test
+package xattr
 
 import (
+	"bytes"
 	"io/ioutil"
 	"os"
-	"runtime"
+	"sort"
 	"testing"
-
-	"."
-	. "launchpad.net/gocheck"
 )
 
-func TestXattr(t *testing.T) { TestingT(t) }
-
-type F struct {
-	f    string
-	attr string
-}
-
-var _ = Suite(&F{})
-
-func (f *F) SetUpTest(c *C) {
+func mktemp(t *testing.T) *os.File {
 	file, err := ioutil.TempFile("", "test_xattr_")
-	c.Assert(err, IsNil)
-	err = file.Close()
-	c.Assert(err, IsNil)
-	f.f = file.Name()
-	f.attr = "test xattr"
+	if err != nil {
+		t.Fatalf("TempFile() failed: %v", err)
+	}
+
+	return file
 }
 
-func (f *F) TearDownTest(c *C) {
-	if !c.Failed() {
-		err := os.Remove(f.f)
-		c.Assert(err, IsNil)
+func stringsEqual(got, expected []string) bool {
+	if len(got) != len(expected) {
+		return false
+	}
+
+	for i := range got {
+		if got[i] != expected[i] {
+			return false
+		}
+	}
+
+	return true
+}
+
+// expected must be sorted slice of attribute names.
+func checkList(t *testing.T, path string, expected []string) {
+	got, err := List(path)
+	if err != nil {
+		t.Fatalf("List(%q) failed: %v", path, err)
+	}
+
+	sort.Strings(got)
+
+	if !stringsEqual(got, expected) {
+		t.Errorf("List(%q): expected %v, got %v", path, got, expected)
 	}
 }
 
-func (f *F) TestFlow(c *C) {
+func checkListError(t *testing.T, path string, f func(error) bool) {
+	got, err := List(path)
+	if !f(err) {
+		t.Errorf("List(%q): unexpected error value: %v", path, err)
+	}
+
+	if got != nil {
+		t.Error("List(): expected nil slice on error")
+	}
+}
+
+func checkSet(t *testing.T, path, attr string, data []byte) {
+	if err := Set(path, attr, data); err != nil {
+		t.Fatalf("Set(%q, %q, %v) failed: %v", path, attr, data, err)
+	}
+}
+
+func checkSetError(t *testing.T, path, attr string, data []byte, f func(error) bool) {
+	if err := Set(path, attr, data); !f(err) {
+		t.Fatalf("Set(%q, %q, %v): unexpected error value %v", path, attr, data, err)
+	}
+}
+
+func checkGet(t *testing.T, path, attr string, expected []byte) {
+	got, err := Get(path, attr)
+	if err != nil {
+		t.Fatalf("Get(%q, %q) failed: %v", path, attr, err)
+	}
+
+	if !bytes.Equal(got, expected) {
+		t.Errorf("Get(%q, %q): got %v, expected %v", path, attr, got, expected)
+	}
+}
+
+func checkGetError(t *testing.T, path, attr string, f func(error) bool) {
+	got, err := Get(path, attr)
+	if !f(err) {
+		t.Errorf("Get(%q, %q): unexpected error value: %v", path, attr, err)
+	}
+
+	if got != nil {
+		t.Error("Get(): expected nil slice on error")
+	}
+}
+
+func checkRemove(t *testing.T, path, attr string) {
+	if err := Remove(path, attr); err != nil {
+		t.Fatalf("Remove(%q, %q) failed: %v", path, attr, err)
+	}
+}
+
+func checkRemoveError(t *testing.T, path, attr string, f func(error) bool) {
+	if err := Remove(path, attr); !f(err) {
+		t.Errorf("Remove(%q, %q): unexpected error value: %v", path, attr, err)
+	}
+}
+
+func TestFlow(t *testing.T) {
+	f := mktemp(t)
+	defer func() { f.Close(); os.Remove(f.Name()) }()
+
+	path := f.Name()
 	data := []byte("test xattr data")
+	attr := "test xattr"
 	attr2 := "text xattr 2"
 
-	attrs, err := xattr.List(f.f)
-	c.Check(err, IsNil)
-	c.Check(attrs, DeepEquals, []string{})
-
-	err = xattr.Set(f.f, f.attr, data)
-	c.Check(err, IsNil)
-
-	attrs, err = xattr.List(f.f)
-	c.Check(err, IsNil)
-	c.Check(attrs, DeepEquals, []string{f.attr})
-
-	err = xattr.Set(f.f, attr2, data)
-	c.Check(err, IsNil)
-
-	attrs, err = xattr.List(f.f)
-	c.Check(err, IsNil)
-	c.Check(attrs, DeepEquals, []string{f.attr, attr2})
-
-	data1, err := xattr.Get(f.f, f.attr)
-	c.Check(err, IsNil)
-	c.Check(data1, DeepEquals, data)
-
-	data1, err = xattr.Get(f.f, "test other xattr")
-	if runtime.GOOS == "linux" {
-		c.Check(err, ErrorMatches, "*. no data available")
-	} else {
-		c.Check(err, ErrorMatches, "*. attribute not found")
-	}
-	c.Check(err, FitsTypeOf, &xattr.XAttrError{})
-	c.Check(xattr.IsNotExist(err), Equals, true)
-	c.Check(data1, IsNil)
-
-	err = xattr.Remove(f.f, f.attr)
-	c.Check(err, IsNil)
-
-	attrs, err = xattr.List(f.f)
-	c.Check(err, IsNil)
-	c.Check(attrs, DeepEquals, []string{attr2})
-
-	err = xattr.Remove(f.f, attr2)
-	c.Check(err, IsNil)
-
-	attrs, err = xattr.List(f.f)
-	c.Check(err, IsNil)
-	c.Check(attrs, DeepEquals, []string{})
+	checkList(t, path, []string{})
+	checkSet(t, path, attr, data)
+	checkList(t, path, []string{attr})
+	checkSet(t, path, attr2, data)
+	checkList(t, path, []string{attr, attr2})
+	checkGet(t, path, attr, data)
+	checkGetError(t, path, "unknown attr", IsNotExist)
+	checkRemove(t, path, attr)
+	checkList(t, path, []string{attr2})
+	checkRemove(t, path, attr2)
+	checkList(t, path, []string{})
 }
 
-func (f *F) TestEmptyAttr(c *C) {
+func TestEmptyAttr(t *testing.T) {
+	f := mktemp(t)
+	defer func() { f.Close(); os.Remove(f.Name()) }()
+
+	path := f.Name()
+	attr := "test xattr"
 	data := []byte{}
 
-	err := xattr.Set(f.f, f.attr, data)
-	c.Check(err, IsNil)
-
-	attrs, err := xattr.List(f.f)
-	c.Check(err, IsNil)
-	c.Check(attrs, DeepEquals, []string{f.attr})
-
-	data1, err := xattr.Get(f.f, f.attr)
-	c.Check(err, IsNil)
-	c.Check(data1, DeepEquals, data)
-
-	err = xattr.Remove(f.f, f.attr)
-	c.Check(err, IsNil)
-
-	attrs, err = xattr.List(f.f)
-	c.Check(err, IsNil)
-	c.Check(attrs, DeepEquals, []string{})
+	checkSet(t, path, attr, data)
+	checkList(t, path, []string{attr})
+	checkGet(t, path, attr, []byte{})
+	checkRemove(t, path, attr)
+	checkList(t, path, []string{})
 }
 
-func (f *F) TestNoFile(c *C) {
-	fn := "no-such-file"
+func fileNotExists(err error) bool {
+	// XXX: !!!
+	return err != nil
+}
+
+func TestNoFile(t *testing.T) {
+	path := "no-such-file"
+	attr := "test xattr"
 	data := []byte("test_xattr data")
 
-	attrs, err := xattr.List(fn)
-	c.Check(err, ErrorMatches, "*. no such file or directory")
-	c.Check(err, FitsTypeOf, &xattr.XAttrError{})
-	c.Check(attrs, IsNil)
-
-	err = xattr.Set(fn, f.attr, data)
-	c.Check(err, ErrorMatches, "*. no such file or directory")
-	c.Check(err, FitsTypeOf, &xattr.XAttrError{})
-
-	attrs, err = xattr.List(fn)
-	c.Check(err, ErrorMatches, "*. no such file or directory")
-	c.Check(err, FitsTypeOf, &xattr.XAttrError{})
-	c.Check(attrs, IsNil)
-
-	data1, err := xattr.Get(fn, f.attr)
-	c.Check(err, ErrorMatches, "*. no such file or directory")
-	c.Check(err, FitsTypeOf, &xattr.XAttrError{})
-	c.Check(data1, IsNil)
-
-	err = xattr.Remove(fn, f.attr)
-	c.Check(err, ErrorMatches, "*. no such file or directory")
-	c.Check(err, FitsTypeOf, &xattr.XAttrError{})
-
-	attrs, err = xattr.List(fn)
-	c.Check(err, ErrorMatches, "*. no such file or directory")
-	c.Check(err, FitsTypeOf, &xattr.XAttrError{})
-	c.Check(attrs, IsNil)
+	checkListError(t, path, fileNotExists)
+	checkSetError(t, path, attr, data, fileNotExists)
+	checkGetError(t, path, attr, fileNotExists)
+	checkRemoveError(t, path, attr, fileNotExists)
 }
