@@ -5,7 +5,7 @@ import (
 )
 
 func get(path, attr string, dest []byte) (sz int, err error) {
-	return syscall.Getxattr(path, name, dest)
+	return syscall.Getxattr(path, attr, dest)
 }
 
 func list(path string, dest []byte) (sz int, err error) {
