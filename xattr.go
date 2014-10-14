@@ -10,25 +10,9 @@ import (
 	"os"
 )
 
-// XAttrError records an error and the operation, file path and attribute that caused it.
-type XAttrError struct {
-	Op   string
-	Path string
-	Attr string
-	Err  error
-}
-
-func (e *XAttrError) Error() string {
-	return e.Op + " " + e.Path + " " + e.Attr + ": " + e.Err.Error()
-}
-
 // IsNotExist returns a boolean indicating whether the error is known to report
 // that an extended attribute does not exist.
 func IsNotExist(err error) bool {
-	if e, ok := err.(*XAttrError); ok {
-		err = e.Err
-	}
-
 	if e, ok := err.(*os.PathError); ok {
 		err = e.Err
 	}
