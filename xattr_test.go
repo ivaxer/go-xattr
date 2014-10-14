@@ -108,8 +108,8 @@ func TestFlow(t *testing.T) {
 
 	path := f.Name()
 	data := []byte("test xattr data")
-	attr := "test xattr"
-	attr2 := "text xattr 2"
+	attr := "user.test xattr"
+	attr2 := "user.text xattr 2"
 
 	checkList(t, path, []string{})
 	checkSet(t, path, attr, data)
@@ -129,7 +129,7 @@ func TestEmptyAttr(t *testing.T) {
 	defer func() { f.Close(); os.Remove(f.Name()) }()
 
 	path := f.Name()
-	attr := "test xattr"
+	attr := "user.test xattr"
 	data := []byte{}
 
 	checkSet(t, path, attr, data)
@@ -146,7 +146,7 @@ func fileNotExists(err error) bool {
 
 func TestNoFile(t *testing.T) {
 	path := "no-such-file"
-	attr := "test xattr"
+	attr := "user.test xattr"
 	data := []byte("test_xattr data")
 
 	checkListError(t, path, fileNotExists)

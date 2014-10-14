@@ -1,8 +1,9 @@
-// Package xattr provides a simple interface to user extended attributes on Linux and OSX.
-// Support for xattrs is filesystem dependant, so not a given even if you are running one of those operating systems.
+// Package xattr provides a simple interface to user extended attributes on
+// Linux and OSX. Support for xattrs is filesystem dependant, so not a given
+// even if you are running one of those operating systems.
 //
-// On Linux you have to edit /etc/fstab to include "user_xattr". Also, Linux extended attributes have a manditory
-// prefix of "user.". This is prepended transparently for Get/Set/Remove and hidden in List.
+// On Linux you have to edit /etc/fstab to include "user_xattr". Also, on Linux
+// user's extended attributes have a manditory prefix of "user.".
 package xattr
 
 // XAttrError records an error and the operation, file path and attribute that caused it.
@@ -64,8 +65,6 @@ func Getxattr(path, attr string, dest []byte) (sz int, err error) {
 //
 // See Getxattr for low-level usage.
 func Get(path, attr string) ([]byte, error) {
-	attr = prefix + attr
-
 	// find size
 	size, err := Getxattr(path, attr, nil)
 	if err != nil {
@@ -128,7 +127,7 @@ func List(path string) ([]string, error) {
 	if err != nil {
 		return nil, &XAttrError{"listxattr", path, "", err}
 	}
-	return stripPrefix(nullTermToStrings(buf[:size])), nil
+	return nullTermToStrings(buf[:size]), nil
 }
 
 // Setxattr sets value in data of extended attribute attr and accosiated with
@@ -151,8 +150,6 @@ func Setxattr(path, attr string, data []byte, flags int) error {
 //
 // See Setxattr for low-level usage.
 func Set(path, attr string, data []byte) error {
-	attr = prefix + attr
-
 	if err := Setxattr(path, attr, data, 0); err != nil {
 		return &XAttrError{"setxattr", path, attr, err}
 	}
@@ -170,7 +167,6 @@ func Removexattr(path, attr string) error {
 
 // Remove removes the extended attribute.
 func Remove(path, attr string) error {
-	attr = prefix + attr
 	if err := Removexattr(path, attr); err != nil {
 		return &XAttrError{"removexattr", path, attr, err}
 	}
