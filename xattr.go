@@ -43,13 +43,15 @@ func nullTermToStrings(buf []byte) (result []string) {
 // associated with given path in filesystem into buffer dest.
 //
 // On success, dest contains data associated with attr, retrieved value size sz
-// and nil error returned.
+// and nil error are returned.
 //
-// On error, non-nil error returned. Getxattr returns error if dest was too
+// On error, non-nil error is returned. Getxattr returns error if dest was too
 // small for attribute value.
 //
 // A nil slice can be passed as dest to get current size of attribute value,
 // which can be used to estimate dest length for value associated with attr.
+//
+// See getxattr(2) for more information.
 //
 // Get is high-level function on top of Getxattr. Getxattr more efficient,
 // because it issues one syscall per call, doesn't allocate memory for
@@ -58,7 +60,9 @@ func Getxattr(path, attr string, dest []byte) (sz int, err error) {
 	return get(path, attr, dest)
 }
 
-// Retrieves extended attribute data associated with path.
+// Get retrieves extended attribute data associated with path.
+//
+// See Getxattr for low-level usage.
 func Get(path, attr string) ([]byte, error) {
 	attr = prefix + attr
 
@@ -80,11 +84,34 @@ func Get(path, attr string) ([]byte, error) {
 	return buf[:size], nil
 }
 
+// Listxattr retrieves the list of extended attribute names associated with
+// path. The list is set of NULL-terminated names.
+//
+// On success, dest containes list of NULL-terminated names, the length of the
+// extended attribute list and nil error are returned.
+//
+// On error, non nil error is returned. Listxattr returns error if dest buffer
+// was too small for extended attribute list.
+//
+// The list of names is returned as an unordered array of NULL-terminated
+// character strings (attribute names are separated by NULL characters), like
+// this:
+//     user.name1\0system.name1\0user.name2\0
+//
+// A nil slice can be passed as dest to get the current size of the list of
+// extended attribute names, which can be used to estimate dest length for
+// the list of names.
+//
+// See listxattr(2) for more information.
+//
+// List is high-level function on top of Listxattr.
 func Listxattr(path string, dest []byte) (sz int, err error) {
 	return list(path, dest)
 }
 
-// Retrieves a list of names of extended attributes associated with path.
+// List retrieves a list of names of extended attributes associated with path.
+//
+// See Listxattr for low-level usage.
 func List(path string) ([]string, error) {
 	// find size
 	size, err := Listxattr(path, nil)
@@ -104,11 +131,25 @@ func List(path string) ([]string, error) {
 	return stripPrefix(nullTermToStrings(buf[:size])), nil
 }
 
+// Setxattr sets value in data of extended attribute attr and accosiated with
+// path.
+//
+// The flags refine the semantic of the operation. XATTR_CREATE specifies pure
+// create, which fails if attr already exists. XATTR_REPLACE  specifies a pure
+// replace operation, which fails if the attr does not already exist. By
+// default (no flags), the attr will be created if need be, or will simply
+// replace the value if attr exists.
+//
+// On error, non nil error is returned.
+//
+// See setxattr(2) for more information.
 func Setxattr(path, attr string, data []byte, flags int) error {
 	return set(path, attr, data, flags)
 }
 
-// Associates data as an extended attribute of path.
+// Set associates data as an extended attribute of path.
+//
+// See Setxattr for low-level usage.
 func Set(path, attr string, data []byte) error {
 	attr = prefix + attr
 
@@ -118,11 +159,16 @@ func Set(path, attr string, data []byte) error {
 	return nil
 }
 
+// Removexattr removes the extended attribute attr accosiated with path.
+//
+// On error, non-nil error is returned.
+//
+// See removexattr(2) for more information.
 func Removexattr(path, attr string) error {
 	return remove(path, attr)
 }
 
-// Removes the extended attribute.
+// Remove removes the extended attribute.
 func Remove(path, attr string) error {
 	attr = prefix + attr
 	if err := Removexattr(path, attr); err != nil {
