@@ -6,6 +6,10 @@
 // user's extended attributes have a manditory prefix of "user.".
 package xattr
 
+import (
+	"os"
+)
+
 // XAttrError records an error and the operation, file path and attribute that caused it.
 type XAttrError struct {
 	Op   string
@@ -22,6 +26,10 @@ func (e *XAttrError) Error() string {
 // that an extended attribute does not exist.
 func IsNotExist(err error) bool {
 	if e, ok := err.(*XAttrError); ok {
+		err = e.Err
+	}
+
+	if e, ok := err.(*os.PathError); ok {
 		err = e.Err
 	}
 
@@ -62,14 +70,15 @@ func Getxattr(path, attr string, dest []byte) (sz int, err error) {
 	return get(path, attr, dest)
 }
 
-// Get retrieves extended attribute data associated with path.
+// Get retrieves extended attribute data associated with path. If there is an
+// error, it will be of type *os.PathError.
 //
 // See Getxattr for low-level usage.
 func Get(path, attr string) ([]byte, error) {
 	// find size
 	size, err := Getxattr(path, attr, nil)
 	if err != nil {
-		return nil, &XAttrError{"getxattr", path, attr, err}
+		return nil, &os.PathError{"getxattr", path, err}
 	}
 	if size == 0 {
 		return []byte{}, nil
@@ -79,7 +88,7 @@ func Get(path, attr string) ([]byte, error) {
 	buf := make([]byte, size)
 	size, err = Getxattr(path, attr, buf)
 	if err != nil {
-		return nil, &XAttrError{"getxattr", path, attr, err}
+		return nil, &os.PathError{"getxattr", path, err}
 	}
 	return buf[:size], nil
 }
@@ -110,13 +119,14 @@ func Listxattr(path string, dest []byte) (sz int, err error) {
 }
 
 // List retrieves a list of names of extended attributes associated with path.
+// If there is an error, it will be of type *os.PathError.
 //
 // See Listxattr for low-level usage.
 func List(path string) ([]string, error) {
 	// find size
 	size, err := Listxattr(path, nil)
 	if err != nil {
-		return nil, &XAttrError{"listxattr", path, "", err}
+		return nil, &os.PathError{"listxattr", path, err}
 	}
 	if size == 0 {
 		return []string{}, nil
@@ -126,7 +136,7 @@ func List(path string) ([]string, error) {
 	buf := make([]byte, size)
 	size, err = Listxattr(path, buf)
 	if err != nil {
-		return nil, &XAttrError{"listxattr", path, "", err}
+		return nil, &os.PathError{"listxattr", path, err}
 	}
 	return nullTermToStrings(buf[:size]), nil
 }
@@ -147,12 +157,13 @@ func Setxattr(path, attr string, data []byte, flags int) error {
 	return set(path, attr, data, flags)
 }
 
-// Set associates data as an extended attribute of path.
+// Set associates data as an extended attribute of path. If there is an error,
+// it will be of type *os.PathError.
 //
 // See Setxattr for low-level usage.
 func Set(path, attr string, data []byte) error {
 	if err := Setxattr(path, attr, data, 0); err != nil {
-		return &XAttrError{"setxattr", path, attr, err}
+		return &os.PathError{"setxattr", path, err}
 	}
 	return nil
 }
@@ -166,10 +177,11 @@ func Removexattr(path, attr string) error {
 	return remove(path, attr)
 }
 
-// Remove removes the extended attribute.
+// Remove removes the extended attribute. If there is an error, it will be of
+// type *os.PathError.
 func Remove(path, attr string) error {
 	if err := Removexattr(path, attr); err != nil {
-		return &XAttrError{"removexattr", path, attr, err}
+		return &os.PathError{"removexattr", path, err}
 	}
 	return nil
 }

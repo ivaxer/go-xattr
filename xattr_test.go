@@ -141,18 +141,13 @@ func TestEmptyAttr(t *testing.T) {
 	checkList(t, path, []string{})
 }
 
-func fileNotExists(err error) bool {
-	// XXX: !!!
-	return err != nil
-}
-
 func TestNoFile(t *testing.T) {
 	path := "no-such-file"
 	attr := "user.test xattr"
 	data := []byte("test_xattr data")
 
-	checkListError(t, path, fileNotExists)
-	checkSetError(t, path, attr, data, fileNotExists)
-	checkGetError(t, path, attr, fileNotExists)
-	checkRemoveError(t, path, attr, fileNotExists)
+	checkListError(t, path, os.IsNotExist)
+	checkSetError(t, path, attr, data, os.IsNotExist)
+	checkGetError(t, path, attr, os.IsNotExist)
+	checkRemoveError(t, path, attr, os.IsNotExist)
 }
