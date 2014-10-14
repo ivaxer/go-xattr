@@ -1,7 +1,6 @@
 package xattr
 
 import (
-	"strings"
 	"syscall"
 )
 
