@@ -8,8 +8,10 @@ import (
 	"testing"
 )
 
+var tmpdir = os.Getenv("TEST_XATTR_PATH")
+
 func mktemp(t *testing.T) *os.File {
-	file, err := ioutil.TempFile("", "test_xattr_")
+	file, err := ioutil.TempFile(tmpdir, "test_xattr_")
 	if err != nil {
 		t.Fatalf("TempFile() failed: %v", err)
 	}
@@ -117,7 +119,7 @@ func TestFlow(t *testing.T) {
 	checkSet(t, path, attr2, data)
 	checkList(t, path, []string{attr, attr2})
 	checkGet(t, path, attr, data)
-	checkGetError(t, path, "unknown attr", IsNotExist)
+	checkGetError(t, path, "user.unknown attr", IsNotExist)
 	checkRemove(t, path, attr)
 	checkList(t, path, []string{attr2})
 	checkRemove(t, path, attr2)
