@@ -66,7 +66,7 @@ func checkSet(t *testing.T, path, attr string, data []byte) {
 
 func checkSetError(t *testing.T, path, attr string, data []byte, f func(error) bool) {
 	if err := Set(path, attr, data); !f(err) {
-		t.Fatalf("Set(%q, %q, %v): unexpected error value %v", path, attr, data, err)
+		t.Fatalf("Set(%q, %q, %v): unexpected error value: %v", path, attr, data, err)
 	}
 }
 
