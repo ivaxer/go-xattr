@@ -4,6 +4,6 @@ import (
 	"syscall"
 )
 
-func isNotExist(err *XAttrError) bool {
-	return err.Err == syscall.ENOATTR
+func isNotExist(err error) bool {
+	return err == syscall.ENOATTR
 }
