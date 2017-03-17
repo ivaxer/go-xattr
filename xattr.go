@@ -10,6 +10,11 @@ import (
 	"os"
 )
 
+const (
+	CREATE  = 0x1
+	REPLACE = 0x2
+)
+
 // IsNotExist returns a boolean indicating whether the error is known to report
 // that an extended attribute does not exist.
 func IsNotExist(err error) bool {
